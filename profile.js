@@ -38,6 +38,7 @@ async function fetchAndDisplayUserData(jwt) {
     }
 `;
 
+
     try {
         console.log('JWT:', jwt); // Log JWT before request
         console.log('Query:', query); // Log query before request
@@ -135,17 +136,17 @@ function displaySkills(progresses) {
     const skillsContainer = document.getElementById('skills-display');
     
     const skillCategories = {
+        'JavaScript': {
+            color: '#F7DF1E',
+            patterns: ['js', 'javascript', 'piscine-js', 'front-end'], // Added more patterns
+            value: 0
+        },
         'Go': {
             color: '#00ADD8',
             patterns: ['go', 'golang'],
             value: 0
         },
-        'JavaScript': {
-            color: '#F7DF1E',
-            patterns: ['js', 'javascript', 'node'],
-            value: 0
-        },
-        'HTML': {
+        'HTML/CSS': {
             color: '#E34F26',
             patterns: ['html', 'css', 'web'],
             value: 0
@@ -155,11 +156,6 @@ function displaySkills(progresses) {
             patterns: ['prog', 'algorithm', 'basic'],
             value: 0
         },
-        'Front-end': {
-            color: '#61DAFB',
-            patterns: ['front', 'react', 'vue', 'dom'],
-            value: 0
-        },
         'Back-end': {
             color: '#3C873A',
             patterns: ['back', 'api', 'server', 'database'],
@@ -167,16 +163,16 @@ function displaySkills(progresses) {
         }
     };
 
-    // Calculate values for each category
+    // Improved skill calculation
     if (progresses && progresses.length) {
         progresses.forEach(progress => {
             if (progress.path) {
-                const skillPath = progress.path.split('/')[2]?.toLowerCase();
-                if (skillPath) {
-                    for (const [category, data] of Object.entries(skillCategories)) {
-                        if (data.patterns.some(pattern => skillPath.includes(pattern))) {
-                            data.value += progress.grade || 0;
-                            break;
+                const path = progress.path.toLowerCase();
+                for (const [category, data] of Object.entries(skillCategories)) {
+                    if (data.patterns.some(pattern => path.includes(pattern))) {
+                        // Only count if there's a grade
+                        if (progress.grade > 0) {
+                            data.value += progress.grade;
                         }
                     }
                 }
@@ -184,15 +180,15 @@ function displaySkills(progresses) {
         });
     }
 
-    // Display all categories with values
+    // Enhanced display with better styling
     const skillsHTML = Object.entries(skillCategories)
         .map(([category, data]) => {
             const isActive = data.value > 0;
             return `
                 <div class="skill-badge ${isActive ? 'active' : 'inactive'}" 
-                     style="background-color: ${data.color}; opacity: ${isActive ? 1 : 0.5}">
+                     style="background-color: ${data.color}; opacity: ${isActive ? 1 : 0.7}">
                     <span class="category-name">${category}</span>
-                    <span class="category-value">${data.value > 0 ? data.value + ' XP' : 'Not started'}</span>
+                    <span class="category-value">${data.value > 0 ? Math.round(data.value).toLocaleString() + ' XP' : 'Not started'}</span>
                 </div>
             `;
         }).join('');
@@ -201,13 +197,13 @@ function displaySkills(progresses) {
 }
 
 function createXPChart(transactions) {
-    if (!transactions || !transactions.length) return;
-
     const sortedData = transactions
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    if (!sortedData || !sortedData.length) return;
     
     const viewBox = "0 0 600 400";
-    const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+    const margin = { top: 20, right: 20, bottom: 50, left: 70 }; // Increased margins for labels
     
     const xScale = (i) => margin.left + (i * ((600 - margin.left - margin.right) / (sortedData.length - 1)));
     const yScale = (val) => 400 - margin.bottom - ((val / Math.max(...sortedData.map(d => d.amount))) * (400 - margin.top - margin.bottom));
@@ -222,7 +218,7 @@ function createXPChart(transactions) {
                 stroke="#007bff"
                 stroke-width="2"
             />
-            ${createAxes(600, 400, margin)}
+            ${createAxes(600, 400, margin, sortedData)}
             ${createDataPoints(sortedData, xScale, yScale)}
         </svg>
     `;
@@ -258,14 +254,73 @@ function createProjectChart(progresses) {
     document.getElementById('projectChart').innerHTML = svg;
 }
 
-function createAxes(width, height, margin) {
+function createAxes(width, height, margin, data) {
+    const maxXP = Math.max(...data.map(d => d.amount));
+    const yTicks = 5; // Number of ticks on Y axis
+    
+    // Create Y-axis ticks and labels
+    const yAxisTicks = Array.from({length: yTicks}, (_, i) => {
+        const value = Math.round((maxXP / (yTicks - 1)) * i);
+        const y = height - margin.bottom - ((value / maxXP) * (height - margin.top - margin.bottom));
+        return `
+            <g>
+                <line 
+                    x1="${margin.left}" 
+                    x2="${width - margin.right}" 
+                    y1="${y}" 
+                    y2="${y}" 
+                    stroke="#eee"
+                    stroke-dasharray="2,2"
+                />
+                <text 
+                    x="${margin.left - 10}" 
+                    y="${y}" 
+                    text-anchor="end" 
+                    alignment-baseline="middle"
+                    class="axis-label"
+                >
+                    ${value.toLocaleString()} XP
+                </text>
+            </g>
+        `;
+    }).join('');
+
+    // Create X-axis date labels
+    const xAxisLabels = data.map((d, i) => {
+        const x = margin.left + (i * ((width - margin.left - margin.right) / (data.length - 1)));
+        const date = new Date(d.createdAt).toLocaleDateString();
+        return `
+            <g transform="translate(${x},${height - margin.bottom + 20})">
+                <text 
+                    transform="rotate(45)"
+                    text-anchor="start"
+                    class="axis-label"
+                >
+                    ${date}
+                </text>
+            </g>
+        `;
+    }).filter((_, i) => i % Math.ceil(data.length / 10) === 0).join('');
+
     return `
-        <line x1="${margin.left}" y1="${height - margin.bottom}" 
-              x2="${width - margin.right}" y2="${height - margin.bottom}" 
-              stroke="black" />
-        <line x1="${margin.left}" y1="${height - margin.bottom}" 
-              x2="${margin.left}" y2="${margin.top}" 
-              stroke="black" />
+        <g class="axes">
+            <line 
+                x1="${margin.left}" 
+                y1="${height - margin.bottom}" 
+                x2="${width - margin.right}" 
+                y2="${height - margin.bottom}" 
+                stroke="black" 
+            />
+            <line 
+                x1="${margin.left}" 
+                y1="${height - margin.bottom}" 
+                x2="${margin.left}" 
+                y2="${margin.top}" 
+                stroke="black" 
+            />
+            ${yAxisTicks}
+            ${xAxisLabels}
+        </g>
     `;
 }
 
@@ -278,14 +333,6 @@ function createDataPoints(data, xScale, yScale) {
                 r="4" 
                 fill="#007bff"
             />
-            <text 
-                x="${xScale(i)}" 
-                y="${yScale(d.amount) - 10}"
-                text-anchor="middle"
-                class="data-label"
-            >
-                ${d.amount}
-            </text>
         </g>
     `).join('');
 }
