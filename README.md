@@ -1,4 +1,4 @@
-# vkyrychuk88.github.io
+# schanaDev.github.io 
 
 # GraphQL Profile Page
 
@@ -17,10 +17,10 @@ audits
 skills
 Beside those sections it will have a mandatory section for the generation of statistic graphs.
 
-Access the application in your browser at `https://vkyrychuk88.github.io/`.
+Access the application in your browser at `https://schanaDev.github.io /`.
 
 ## Contributors
-- **Volodymyr Kyrychuk** (Captain)
+- **Sahib Chana** (Captain)
 
 ## License
 This project is part of the **01 Founders coding curriculum**. All rights reserved.
